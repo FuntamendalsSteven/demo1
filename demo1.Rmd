@@ -5,8 +5,127 @@ output: html_notebook
 
 by Steven Tang \
 Updated 20251224 \
-This is an Rstudio Notebook, that performs every operation (seen) on this weeks video (Week 20251219- 20251226).
+This is an Rstudio Notebook, that performs every operation (seen) on this weeks video (Week 20251219- 20251226).\
 
+# Starting Fresh
 ```{r}
+rm(list = ls()) # This line deletes all objects from the current work space. Translates to "removes(list = list all objects)"
+```
 
+# Getting the Data
+## Opening a file from a URL (file in Excel), naming it 'fragility23'
+```{r}
+linkGit = "https://github.com/FuntamendalsSteven/demo1/raw/refs/heads/develop/FSI-2023-DOWNLOAD.xlsx" # set variable to hold link as a string
+
+# [in terminal] sudo apt-get install libcurl4-openssl-dev # if curl gives error (needed for my specific Ubuntu machine)
+# install.packages('rio') # if 'rio' package is not installed
+library(rio) # package needed
+fragility23 = rio::import(file = linkGit) # object named fragility23 that will hold the result
+```
+
+# Exploratory Commands
+
+## Find out column names in 'fragility23'?
+```{r}
+names(x = fragility23) # function that returns the column names of the data frame input
+```
+
+## Check the data types in df?
+### Let's find out if numeric columns have been read as should
+```{r}
+str(object = fragility23) # returns the structure of the data frame input, check if types are correct
+```
+
+
+## Show me the first 10 rows?
+```{r}
+head(x = fragility23,10) # returns the first 10 rows of data in the data frame
+```
+
+## Show me the last 10 rows?
+```{r}
+tail(fragility23,10) # returns the last 10 rows of data in the data frame
+```
+
+# Transformative Commands
+
+## Subsetting
+### Keep some columns: Country, Total, S1: Demographic Pressures, P1: State Legitimacy, E2: Economic Inequality into object 'frag23_sub'
+```{r}
+grep(pattern = "Country|S1|P1|E2|Total",x = names(fragility23),fixed = F,value = T) # test to see if text string pattern is present in the columns of the data frame. fixed parameter allows anywhere in the data frame to be searched, and value parameter specifies whether to flag if the pattern is present
+
+keep=grep("Country|S1|P1|E2|Total",names(fragility23),fixed = F,value = T) # save the result from grep into a variable
+frag23_sub=fragility23[,keep] # Create new object from the original data frame where only the string pattern is present. First parameter is for row selection, left empty selects all. second parameter is column selection, which is from keep
+```
+
+## Renaming
+### rename 'frag23_sub' columns, keep var codes only
+```{r}
+names(frag23_sub)[3:5]=c("S1","E2", "P1") # rename the third, fourth, and fifth columns of the frag23_sub dataframe to the input values "S1", "E2", "P1" respectively
+```
+
+## Filtering
+### Get me the top ten best countries on the 'E2' measure from 'frag23_sub'
+```{r}
+tail(frag23_sub[order(x=-frag23_sub$E2),],10) #option1 show last 10 rows portion of frag23_sub
+tail(frag23_sub[order(x=-frag23_sub$E2),'Country'],10) #option2 show last 10 Country row values of frag23_sub
+```
+
+# Some Computations
+
+## Give the statistical description of 'frag23-sub'
+```{r}
+summary(object = frag23_sub) # Shows basic statistical overview of data object
+```
+
+## The value of the worst quartile in Total
+```{r}
+q3_Total=quantile(x = frag23_sub$Total, 
+                  probs = 0.75, 
+                  na.rm = TRUE) # calculates 75th percentile of Total column in frag23_sub. na.rm = TRUE ignores missing or invalid values
+```
+
+## Show correlations between "S1", "E2", "P1"
+### Their "significance?"
+```{r}
+cor(x=frag23_sub[,-c(1,2)]) #no 'Country', no "Total' # calculates correlation between frag23_sub columns, minus columns 1 and 2. first comma is empty so selects all rows (all entries)
+
+# [in terminal] sudo apt-get install gfortran # (needed for my specific Ubuntu machine)
+# install.packages("corrtable")
+library(corrtable) # include corrtable library
+corrtable::correlation_matrix(df = frag23_sub[,-c(1,2)]) # creates publication ready correlation matrix with significance marked by asterisk
+```
+
+## Regress P1 and E2 on S1
+```{r}
+lm(S1~P1+E2,data=frag23_sub) # linear regression model regress S1 = dependent variables, P1 E2 independent variables
+model <- lm(S1 ~ P1 + E2, data = frag23_sub) # store the lm in model
+summary(model) # return a statistical summary of the linear regression model
+```
+
+# Some Plotting
+
+## Give me a plot for the 'P1' variable
+```{r}
+hist(x = frag23_sub$P1) #base r # creates histogram of frag23_sub using P1 column
+```
+
+## Visual correlation between S1 and E2
+### Color points if country is on the worst quartile of Total
+```{r}
+plot(x=frag23_sub$S1, y=frag23_sub$E2) # plots S1 x axis and E2 y axis of frag23_sub
+
+frag23_sub$Total>=q3_Total # logical vector for which items are greater than or equal to the 75th percentile
+frag23_sub$worstQt=frag23_sub$Total>=q3_Total # Adds a new column for each entry for whether or not entry is in worst quartile
+
+plot(frag23_sub$S1, 
+     frag23_sub$E2,pch=20,
+     col = as.factor(frag23_sub$worstQt)) # plots S1 vs E2 using circles pch=20 colored based on if in worst quartile true or false column
+```
+
+## Visual of the regression P1 and E2 on S1
+```{r}
+# install.packages("sjPlot")
+library(sjPlot) # library sjPlot
+plot_models(model) # plots model for visual of regression
 ```
